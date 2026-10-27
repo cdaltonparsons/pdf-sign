@@ -5,6 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>PDF Sign</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <style>
+    /* Teach the browser about each handwriting font, so the choices below
+       look the same as the signature that ends up in the PDF. */
+    {% for key, font in fonts.items() %}
+    @font-face { font-family: "sig-{{ key }}"; src: url("{{ url_for('static', filename='fonts/' + font.file) }}"); }
+    {% endfor %}
+  </style>
 </head>
 <body>
   <!-- The left panel holds all the controls. -->
@@ -18,7 +25,28 @@
 
     <section>
       <h2>2. Your signature</h2>
-      <input type="file" id="signature-input" accept="image/*,.heic">
+      <!-- Two ways to make a signature. Only one panel shows at a time. -->
+      <div class="tabs">
+        <button type="button" id="mode-photo" class="active">Photo</button>
+        <button type="button" id="mode-typed">Type it</button>
+      </div>
+
+      <div id="photo-panel">
+        <input type="file" id="signature-input" accept="image/*,.heic">
+      </div>
+
+      <div id="typed-panel" hidden>
+        <input type="text" id="typed-name" placeholder="Type your name">
+        <div id="font-choices">
+          {% for key, font in fonts.items() %}
+          <label class="font-choice" title="{{ font.name }}">
+            <input type="radio" name="font" value="{{ key }}" {% if loop.first %}checked{% endif %}>
+            <span class="font-sample" style="font-family: 'sig-{{ key }}'">{{ font.name }}</span>
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+
       <div id="signature-preview" class="checkerboard" hidden>
         <img id="signature-img" alt="Your signature">
       </div>

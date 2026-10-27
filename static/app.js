@@ -10,7 +10,10 @@ const $ = (id) => document.getElementById(id);
 const state = {
   pdfId: null,
   pages: [],          // [{width, height}] in PDF points, one per page
-  signatureId: null,
+  signatureId: null,  // the signature in use right now (photo or typed)
+  signatureMode: "photo",  // "photo" or "typed"
+  photoSignatureId: null,
+  typedSignatureId: null,
   signatureRatio: 1,  // signature height divided by width, in pixels
   threshold: 200,
   tool: null,         // "signature", "text" or null
@@ -76,14 +79,74 @@ $("signature-input").addEventListener("change", async (event) => {
   form.append("file", file);
   try {
     const result = await (await callServer("/api/signature", { method: "POST", body: form })).json();
-    state.signatureId = result.id;
-    $("signature-preview").hidden = false;
-    $("threshold-row").hidden = false;
-    refreshSignature();
-    updateButtons();
+    state.photoSignatureId = result.id;
+    useSignature(result.id);
   } catch (error) {
     alert(error.message);
   }
+});
+
+// Switch to a new signature picture. Anything already placed on the pages
+// switches too, so every signature in the PDF matches.
+function useSignature(id) {
+  state.signatureId = id;
+  $("signature-preview").hidden = !id;
+  $("threshold-row").hidden = !(id && state.signatureMode === "photo");
+  if (id) refreshSignature();
+  updateButtons();
+}
+
+// The "Upload a photo" and "Type it" switch.
+function chooseSignatureMode(mode) {
+  state.signatureMode = mode;
+  $("mode-photo").classList.toggle("active", mode === "photo");
+  $("mode-typed").classList.toggle("active", mode === "typed");
+  $("photo-panel").hidden = mode !== "photo";
+  $("typed-panel").hidden = mode !== "typed";
+  useSignature(mode === "photo" ? state.photoSignatureId : state.typedSignatureId);
+  if (mode === "typed") $("typed-name").focus();
+}
+$("mode-photo").addEventListener("click", () => chooseSignatureMode("photo"));
+$("mode-typed").addEventListener("click", () => chooseSignatureMode("typed"));
+
+// ---------- 2b. Typed signature ----------
+
+// Ask the server to draw the typed name in the chosen font.
+async function makeTypedSignature() {
+  const text = $("typed-name").value.trim();
+  if (!text) {
+    state.typedSignatureId = null;
+    useSignature(null);
+    return;
+  }
+  const font = document.querySelector('input[name="font"]:checked').value;
+  try {
+    const result = await (await callServer("/api/signature/typed", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text, font }),
+    })).json();
+    state.typedSignatureId = result.id;
+    // Only use it if you are still on the "Type it" tab.
+    if (state.signatureMode === "typed") useSignature(result.id);
+  } catch (error) {
+    alert(error.message);
+  }
+}
+
+// As you type, show your name in every font so you can compare them.
+// Wait until you pause typing for a moment before asking the server.
+let typingTimer;
+$("typed-name").addEventListener("input", () => {
+  const text = $("typed-name").value.trim();
+  document.querySelectorAll(".font-choice").forEach((choice) => {
+    choice.querySelector(".font-sample").textContent = text || choice.title;
+  });
+  clearTimeout(typingTimer);
+  typingTimer = setTimeout(makeTypedSignature, 300);
+});
+document.querySelectorAll('input[name="font"]').forEach((radio) => {
+  radio.addEventListener("change", makeTypedSignature);
 });
 
 function signatureUrl() {

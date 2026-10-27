@@ -29,7 +29,9 @@ app.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024  # refuse uploads over 50 MB
 # Simple in-memory storage. Each upload gets a random id, like a coat check
 # ticket, and the browser uses that id to ask for it again later.
 pdfs = {}  # id -> {"name": "lease.pdf", "bytes": b"..."}
-signature_photos = {}  # id -> the photo, already loaded and shrunk
+# id -> {"photo": the photo, already loaded and shrunk}
+#    or {"png": a finished typed signature}
+signatures = {}
 
 
 @app.errorhandler(HTTPException)
@@ -40,7 +42,8 @@ def show_error(error):
 
 @app.route("/")
 def home():
-    return render_template("index.html")
+    # Hand the list of signature fonts to the page, so it can show them.
+    return render_template("index.html", fonts=signature.FONTS)
 
 
 @app.post("/api/pdf")
@@ -75,7 +78,20 @@ def upload_signature():
     except Exception:
         abort(400, "Could not open that image. Try a JPG or PNG.")
     sig_id = uuid.uuid4().hex
-    signature_photos[sig_id] = photo
+    signatures[sig_id] = {"photo": photo}
+    return jsonify({"id": sig_id})
+
+
+@app.post("/api/signature/typed")
+def type_signature():
+    """Turn a typed name and a chosen font into a signature picture."""
+    body = request.get_json() or {}
+    try:
+        image = signature.render_typed(body.get("text", ""), body.get("font", ""))
+    except ValueError as error:
+        abort(400, str(error))
+    sig_id = uuid.uuid4().hex
+    signatures[sig_id] = {"png": signature.to_png_bytes(image)}
     return jsonify({"id": sig_id})
 
 
@@ -83,8 +99,9 @@ def upload_signature():
 def signature_image(sig_id):
     """Send back the signature with its background removed.
 
-    The browser adds ?threshold=200 (or another number) to the address, so
-    moving the slider simply asks for a new picture.
+    For photos the browser adds ?threshold=200 (or another number) to the
+    address, so moving the slider simply asks for a new picture. Typed
+    signatures ignore the threshold because they have no paper to remove.
     """
     png = _clean_signature(sig_id, request.args.get("threshold"))
     return send_file(io.BytesIO(png), mimetype="image/png")
@@ -107,7 +124,10 @@ def sign_pdf(pdf_id):
 
 
 def _clean_signature(sig_id, threshold):
-    photo = signature_photos.get(sig_id) or abort(404)
+    saved = signatures.get(sig_id) or abort(404)
+    if "png" in saved:
+        return saved["png"]  # a typed signature is already clean
+    photo = saved["photo"]
     threshold = int(threshold or signature.DEFAULT_THRESHOLD)
     return signature.to_png_bytes(signature.remove_background(photo, threshold))
 

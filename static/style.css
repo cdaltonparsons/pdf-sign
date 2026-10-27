@@ -1,5 +1,9 @@
 * { box-sizing: border-box; }
 
+/* Make sure anything marked "hidden" in the page really stays hidden, even
+   if another rule below says how to show it. */
+[hidden] { display: none !important; }
+
 body {
   margin: 0;
   display: flex;
@@ -45,6 +49,35 @@ button.primary { background: #16a34a; border-color: #16a34a; color: #fff; }
   background: repeating-conic-gradient(#ddd 0% 25%, #fff 0% 50%) 0 0 / 16px 16px;
 }
 .checkerboard img { display: block; max-width: 100%; max-height: 120px; margin: 0 auto; }
+
+/* The "Upload a photo" and "Type it" switch */
+.tabs { display: flex; margin-bottom: 8px; }
+.tabs button { flex: 1; border-radius: 0; }
+.tabs button:first-child { border-radius: 6px 0 0 6px; }
+.tabs button:last-child { border-radius: 0 6px 6px 0; border-left: none; }
+.tabs button.active { background: #2563eb; border-color: #2563eb; color: #fff; }
+
+/* The list of handwriting fonts. Each one shows your name in that style. */
+#font-choices { margin-top: 8px; }
+.font-choice {
+  display: block;
+  margin: 0 0 4px;
+  padding: 2px 8px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.font-choice input { position: absolute; opacity: 0; }  /* hide the round dot */
+.font-choice:has(input:checked) { border-color: #2563eb; background: #eff6ff; }
+.font-sample {
+  display: block;
+  font-size: 28px;
+  line-height: 1.5;
+  color: #141938;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
 /* The pages */
 main { flex: 1; overflow-y: auto; padding: 24px; }

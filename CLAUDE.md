@@ -14,7 +14,7 @@ In replies, docs and comments, do not use em dashes. Avoid semicolons. Prefer pr
 
 ## How it fits together
 
-`app.py` holds the Flask routes and keeps uploads in memory, keyed by a random id. `signature.py` uses Pillow to remove the light paper background from a signature photo. Pixels brighter than the threshold become transparent, with a soft fade near the threshold, and the result is cropped to the ink. `pdf_tools.py` uses PyMuPDF to render pages and to stamp items. `static/app.js` handles placing, dragging and resizing.
+`app.py` holds the Flask routes and keeps uploads in memory, keyed by a random id. `signature.py` uses Pillow to remove the light paper background from a signature photo. Pixels brighter than the threshold become transparent, with a soft fade near the threshold, and the result is cropped to the ink. It also draws typed signatures with the bundled OFL script fonts in `static/fonts` (listed in `signature.FONTS`). A typed signature is just another signature PNG, so placement and stamping treat it exactly like a photo. `pdf_tools.py` uses PyMuPDF to render pages and to stamp items. `static/app.js` handles placing, dragging and resizing.
 
 The browser sends positions as fractions of the visible page (0 to 1), not as pixels or points. `pdf_tools.py` converts them to PDF points and uses `page.derotation_matrix` so pages with a rotation setting still work. If you touch placement code, keep the rotation tests passing.
 
@@ -26,4 +26,4 @@ Set up with `python3 -m venv .venv`, then `source .venv/bin/activate`, then `pip
 
 ## Roadmap
 
-Version 1 places a signature and free text anywhere on a page. The next step is filling the PDF's own form fields (PyMuPDF `page.widgets()`).
+Version 1 places a signature and free text anywhere on a page. Version 1.1 adds typed signatures in script fonts. The next step is filling the PDF's own form fields (PyMuPDF `page.widgets()`).
