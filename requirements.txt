@@ -1,0 +1,6 @@
+# The libraries this app needs. Install them with:
+#   pip install -r requirements.txt
+flask>=3.0        # the small web server
+pymupdf>=1.24     # reads, draws and edits PDFs
+pillow>=10.0      # edits images (removes the signature background)
+pillow-heif>=0.16 # lets Pillow open iPhone HEIC photos

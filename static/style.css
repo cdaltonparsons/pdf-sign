@@ -1,0 +1,91 @@
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  display: flex;
+  height: 100vh;
+  font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  font-size: 14px;
+  color: #222;
+  background: #e9e9ec;
+}
+
+/* Left control panel */
+.panel {
+  width: 280px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  padding: 16px;
+  background: #fff;
+  border-right: 1px solid #ccc;
+}
+h1 { font-size: 20px; margin: 0 0 12px; }
+h2 { font-size: 14px; margin: 0 0 8px; }
+section { margin-bottom: 20px; }
+input[type="file"], input[type="text"] { width: 100%; }
+input[type="range"] { width: 100%; }
+input[type="number"] { width: 56px; }
+label { display: block; margin: 8px 0; }
+small { display: block; color: #666; }
+.row { display: flex; gap: 8px; align-items: center; justify-content: space-between; margin: 8px 0; }
+.row label { margin: 0; }
+
+button { font: inherit; padding: 6px 12px; border-radius: 6px; border: 1px solid #aaa; background: #f6f6f6; cursor: pointer; }
+button:disabled { opacity: 0.5; cursor: default; }
+button.tool, button.primary { width: 100%; margin-top: 8px; }
+button.tool.active { background: #2563eb; border-color: #2563eb; color: #fff; }
+button.primary { background: #16a34a; border-color: #16a34a; color: #fff; }
+.hint { color: #555; }
+
+/* A grey and white grid shows which parts of the signature are see-through. */
+.checkerboard {
+  margin-top: 8px;
+  padding: 6px;
+  border: 1px solid #ccc;
+  background: repeating-conic-gradient(#ddd 0% 25%, #fff 0% 50%) 0 0 / 16px 16px;
+}
+.checkerboard img { display: block; max-width: 100%; max-height: 120px; margin: 0 auto; }
+
+/* The pages */
+main { flex: 1; overflow-y: auto; padding: 24px; }
+.page {
+  position: relative;
+  max-width: 900px;
+  margin: 0 auto 24px;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+}
+.page > img { display: block; width: 100%; user-select: none; -webkit-user-drag: none; }
+.placing .page { cursor: crosshair; }
+
+/* Things you placed on a page */
+.item {
+  position: absolute;
+  cursor: move;
+  outline: 1px dashed transparent;
+  touch-action: none;
+}
+.item:hover, .item.dragging { outline-color: #2563eb; }
+.item img { display: block; width: 100%; height: 100%; pointer-events: none; }
+.item.text {
+  /* Same font and spacing as the PDF uses, so it lands in the same spot. */
+  font-family: Helvetica, Arial, sans-serif;
+  line-height: 1;
+  white-space: pre;
+  color: #000;
+}
+.item .delete, .item .resize {
+  position: absolute;
+  display: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #2563eb;
+  color: #fff;
+  font-size: 12px;
+  line-height: 16px;
+  text-align: center;
+}
+.item:hover .delete, .item:hover .resize { display: block; }
+.item .delete { top: -10px; right: -10px; cursor: pointer; background: #dc2626; }
+.item .resize { bottom: -8px; right: -8px; cursor: nwse-resize; }
