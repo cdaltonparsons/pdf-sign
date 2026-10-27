@@ -61,7 +61,7 @@ def stamp(pdf_bytes, items, signature_png=None):
 
         if item["type"] == "signature":
             if signature_png is None:
-                raise ValueError("A signature was placed but no signature photo was uploaded.")
+                raise ValueError("A signature was placed but no signature was added. Upload a photo or type your name first.")
             rect = _to_page_rect(page, item["x"], item["y"], item["width"], item["height"])
             # rotate makes the picture stand upright on sideways pages.
             # keep_proportion=False fills the box exactly as shown on screen.

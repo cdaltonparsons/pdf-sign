@@ -6,7 +6,7 @@ It runs on your Mac as a tiny web page in your browser. Nothing is uploaded to t
 
 ## What it can do today
 
-You can open any PDF and see every page. You can upload a photo of your signature on white paper, and the app removes the paper so only the ink is left. A slider lets you tune how much gets removed. You can click to place the signature or a line of text anywhere, drag things around, resize them, and then download the finished PDF. Filling in built-in form fields is planned for a later version.
+You can open any PDF and see every page. You can upload a photo of your signature on white paper, and the app removes the paper so only the ink is left. A slider lets you tune how much gets removed. If you do not have a photo handy, click "Type it" instead, type your name, and pick one of six handwriting style fonts. The fonts come with the app, so this works without internet. You can click to place the signature or a line of text anywhere, drag things around, resize them, and then download the finished PDF. Filling in built-in form fields is planned for a later version.
 
 ## Setting it up on a Mac
 
@@ -61,6 +61,10 @@ Your browser opens at http://127.0.0.1:5050 by itself. If it does not, paste tha
 
 Sign with a dark pen on plain white paper. Take the photo in good light, straight on, and crop it close to the signature. JPG, PNG and iPhone HEIC photos all work. If parts of the ink disappear, slide the background slider to the right. If grey paper still shows around the ink, slide it to the left.
 
+## About the signature fonts
+
+The handwriting fonts are free fonts from Google Fonts: Great Vibes, Allura, Sacramento, Alex Brush, Mrs Saint Delafield and Dancing Script. They use the SIL Open Font License, which lets anyone use and share them. The font files live in `static/fonts` and their licences are in `static/fonts/licenses`. To add another font, put its `.ttf` file in `static/fonts` and add one line to the `FONTS` list in `signature.py`.
+
 ## Getting updates
 
 When new changes are merged on GitHub, pull them down with:
@@ -74,4 +78,4 @@ pip install -r requirements.txt
 
 ## How the code is organised
 
-`app.py` is the web server. It answers the browser's requests. `signature.py` removes the paper background from a signature photo. `pdf_tools.py` draws pages as pictures and stamps the signature and text onto the PDF. `templates/index.html`, `static/app.js` and `static/style.css` are the web page you see. The `tests` folder holds automatic checks. Run them with `pip install pytest` and then `python -m pytest`.
+`app.py` is the web server. It answers the browser's requests. `signature.py` removes the paper background from a signature photo, and draws typed signatures in the handwriting fonts. `pdf_tools.py` draws pages as pictures and stamps the signature and text onto the PDF. `templates/index.html`, `static/app.js` and `static/style.css` are the web page you see. The `tests` folder holds automatic checks. Run them with `pip install pytest` and then `python -m pytest`.

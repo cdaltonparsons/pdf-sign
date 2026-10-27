@@ -107,3 +107,38 @@ def test_bad_upload_gives_a_clear_error():
     response = client.post("/api/pdf", data={"file": (io.BytesIO(b"not a pdf"), "x.pdf")})
     assert response.status_code == 400
     assert "PDF" in response.get_json()["error"]
+
+
+@pytest.mark.parametrize("font_key", list(signature.FONTS))
+def test_every_typed_font_draws_a_signature(font_key):
+    image = signature.render_typed("Charlie Parsons", font_key)
+    alpha = image.getchannel("A")
+    # Some ink, some see-through gaps between letters, and wider than tall.
+    assert alpha.getextrema() == (0, 255)
+    assert image.width > image.height
+    # Trimmed snugly: every edge of the picture touches some ink.
+    assert alpha.getbbox() == (0, 0, image.width, image.height)
+
+
+def test_typed_signature_needs_a_name_and_a_real_font():
+    with pytest.raises(ValueError):
+        signature.render_typed("   ", "allura")
+    with pytest.raises(ValueError):
+        signature.render_typed("Charlie", "comic-sans")
+
+
+def test_typed_signature_through_the_web_server():
+    client = web_app.app.test_client()
+    assert b"sig-great-vibes" in client.get("/").data  # the page lists the fonts
+
+    pdf = client.post("/api/pdf", data={"file": (io.BytesIO(make_pdf()), "lease.pdf")}).get_json()
+    sig = client.post("/api/signature/typed", json={"text": "Charlie", "font": "great-vibes"}).get_json()
+    assert client.get(f"/api/signature/{sig['id']}.png").mimetype == "image/png"
+
+    items = [{"type": "signature", "page": 0, "x": 0.1, "y": 0.8, "width": 0.3, "height": 0.05}]
+    response = client.post(f"/api/pdf/{pdf['id']}/sign", json={"items": items, "signatureId": sig["id"]})
+    assert response.status_code == 200
+    assert len(pymupdf.open(stream=response.data)[0].get_images()) == 1
+
+    bad = client.post("/api/signature/typed", json={"text": "", "font": "great-vibes"})
+    assert bad.status_code == 400
