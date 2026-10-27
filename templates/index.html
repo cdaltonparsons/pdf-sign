@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PDF Sign</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <!-- The left panel holds all the controls. -->
+  <aside class="panel">
+    <h1>PDF Sign</h1>
+
+    <section>
+      <h2>1. Open a PDF</h2>
+      <input type="file" id="pdf-input" accept="application/pdf">
+    </section>
+
+    <section>
+      <h2>2. Your signature</h2>
+      <input type="file" id="signature-input" accept="image/*,.heic">
+      <div id="signature-preview" class="checkerboard" hidden>
+        <img id="signature-img" alt="Your signature">
+      </div>
+      <label id="threshold-row" hidden>
+        Background removal
+        <input type="range" id="threshold" min="100" max="250" value="200">
+        <small>Slide right if parts of the ink disappear. Slide left if paper still shows.</small>
+      </label>
+      <button id="place-signature" class="tool" disabled>Place signature</button>
+    </section>
+
+    <section>
+      <h2>3. Text</h2>
+      <input type="text" id="text-value" placeholder="Type something">
+      <div class="row">
+        <button id="today" type="button">Today's date</button>
+        <label>Size <input type="number" id="text-size" value="12" min="6" max="72"></label>
+      </div>
+      <button id="place-text" class="tool" disabled>Place text</button>
+    </section>
+
+    <section>
+      <h2>4. Save</h2>
+      <button id="download" class="primary" disabled>Download signed PDF</button>
+    </section>
+
+    <p id="hint" class="hint">Open a PDF to get started.</p>
+  </aside>
+
+  <!-- The PDF pages appear here. -->
+  <main id="pages"></main>
+
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
