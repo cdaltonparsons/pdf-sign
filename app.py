@@ -54,11 +54,12 @@ def upload_pdf():
     data = file.read()
     try:
         sizes = pdf_tools.page_sizes(data)
+        fields = pdf_tools.form_fields(data)  # an empty list for plain PDFs
     except Exception:
         abort(400, "That file does not look like a PDF.")
     pdf_id = uuid.uuid4().hex
     pdfs[pdf_id] = {"name": file.filename or "document.pdf", "bytes": data}
-    return jsonify({"id": pdf_id, "pages": sizes})
+    return jsonify({"id": pdf_id, "pages": sizes, "fields": fields})
 
 
 @app.get("/api/pdf/<pdf_id>/page/<int:page_number>.png")
@@ -116,7 +117,7 @@ def sign_pdf(pdf_id):
     if body.get("signatureId"):
         signature_png = _clean_signature(body["signatureId"], body.get("threshold"))
     try:
-        signed = pdf_tools.stamp(pdf["bytes"], body.get("items", []), signature_png)
+        signed = pdf_tools.stamp(pdf["bytes"], body.get("items", []), signature_png, body.get("fields", []))
     except ValueError as error:
         abort(400, str(error))
     name = pdf["name"].rsplit(".", 1)[0] + "-signed.pdf"

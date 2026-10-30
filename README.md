@@ -6,7 +6,7 @@ It runs on your Mac as a tiny web page in your browser. Nothing is uploaded to t
 
 ## What it can do today
 
-You can open any PDF and see every page. You can upload a photo of your signature on white paper, and the app removes the paper so only the ink is left. A slider lets you tune how much gets removed. If you do not have a photo handy, click "Type it" instead, type your name, and pick one of six handwriting style fonts. The fonts come with the app, so this works without internet. You can click to place the signature or a line of text anywhere, drag things around, resize them, and then download the finished PDF. Filling in built-in form fields is planned for a later version.
+You can open any PDF and see every page. You can upload a photo of your signature on white paper, and the app removes the paper so only the ink is left. A slider lets you tune how much gets removed. If you do not have a photo handy, click "Type it" instead, type your name, and pick one of six handwriting style fonts. The fonts come with the app, so this works without internet. You can click to place the signature or a line of text anywhere, drag things around, resize them, and then download the finished PDF. Some PDFs, like tax and rental forms, come with their own boxes to type in. When you open one of those, the app shades each box light blue on the page. Click a box and type, tick the tick boxes, and pick from the drop-down lists. Your answers are saved into the PDF's real form fields, so they show up in any PDF reader.
 
 ## Setting it up on a Mac
 
@@ -78,4 +78,4 @@ pip install -r requirements.txt
 
 ## How the code is organised
 
-`app.py` is the web server. It answers the browser's requests. `signature.py` removes the paper background from a signature photo, and draws typed signatures in the handwriting fonts. `pdf_tools.py` draws pages as pictures and stamps the signature and text onto the PDF. `templates/index.html`, `static/app.js` and `static/style.css` are the web page you see. The `tests` folder holds automatic checks. Run them with `pip install pytest` and then `python -m pytest`.
+`app.py` is the web server. It answers the browser's requests. `signature.py` removes the paper background from a signature photo, and draws typed signatures in the handwriting fonts. `pdf_tools.py` draws pages as pictures and finds and fills the PDF's own form fields, and stamps the signature and text onto the PDF. `templates/index.html`, `static/app.js` and `static/style.css` are the web page you see. The `tests` folder holds automatic checks. Run them with `pip install pytest` and then `python -m pytest`.
