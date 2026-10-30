@@ -142,3 +142,116 @@ def test_typed_signature_through_the_web_server():
 
     bad = client.post("/api/signature/typed", json={"text": "", "font": "great-vibes"})
     assert bad.status_code == 400
+
+
+# ---------- Form fields ----------
+
+
+def make_form_pdf(rotation=0):
+    """A one page form with a text box, a tick box, two radio buttons and a
+    drop-down, like the official forms people get sent."""
+    doc = pymupdf.open()
+    page = doc.new_page(width=612, height=792)
+
+    def add(kind, name, rect, **settings):
+        widget = pymupdf.Widget()
+        widget.field_type = kind
+        widget.field_name = name
+        widget.rect = pymupdf.Rect(rect)
+        for key, value in settings.items():
+            setattr(widget, key, value)
+        page.add_widget(widget)
+
+    add(pymupdf.PDF_WIDGET_TYPE_TEXT, "Full name", (72, 72, 312, 92))
+    add(pymupdf.PDF_WIDGET_TYPE_CHECKBOX, "Agree", (72, 120, 86, 134))
+    add(pymupdf.PDF_WIDGET_TYPE_RADIOBUTTON, "Colour", (72, 150, 86, 164))
+    add(pymupdf.PDF_WIDGET_TYPE_RADIOBUTTON, "Colour", (100, 150, 114, 164))
+    add(pymupdf.PDF_WIDGET_TYPE_COMBOBOX, "State", (72, 180, 200, 200), choice_values=["CA", "NY"])
+
+    # PyMuPDF does not give new radio buttons proper "on" names, but real
+    # forms always have them. Give ours the names "Red" and "Blue".
+    radios = [w for w in page.widgets() if w.field_type == pymupdf.PDF_WIDGET_TYPE_RADIOBUTTON]
+    for widget, on_name in zip(radios, ["Red", "Blue"]):
+        looks = doc.xref_get_key(widget.xref, "AP/N")[1]
+        drawings = [part for part in looks.replace("<<", " ").replace(">>", " ").split("/") if " R" in part]
+        off, on = (part.split(None, 1)[1].strip() for part in drawings)
+        doc.xref_set_key(widget.xref, "AP/N", f"<</Off {off} /{on_name} {on}>>")
+        doc.xref_set_key(widget.xref, "AS", "/Off")
+
+    page.set_rotation(rotation)
+    return doc.tobytes()
+
+
+def read_fields(pdf_bytes):
+    """Read the form back as {name: value}. Radio buttons report the one that is on."""
+    values = {}
+    for widget in pymupdf.open(stream=pdf_bytes)[0].widgets():
+        if widget.field_type_string == "RadioButton":
+            if widget.field_value not in ("Off", None):
+                values[widget.field_name] = widget.field_value
+        else:
+            values[widget.field_name] = widget.field_value
+    return values
+
+
+def test_plain_pdf_has_no_form_fields():
+    assert pdf_tools.form_fields(make_pdf()) == []
+
+
+def test_form_fields_are_found():
+    fields = pdf_tools.form_fields(make_form_pdf())
+    assert [f["kind"] for f in fields] == ["text", "checkbox", "radio", "radio", "choice"]
+    assert fields[0]["name"] == "Full name" and fields[0]["value"] == ""
+    assert fields[1]["value"] is False
+    assert fields[4]["options"] == ["CA", "NY"]
+
+
+@pytest.mark.parametrize("rotation", [0, 90, 180, 270])
+def test_form_field_boxes_match_what_you_see(rotation):
+    pdf = make_form_pdf(rotation)
+    text_box = pdf_tools.form_fields(pdf)[0]
+    page = pymupdf.open(stream=pdf)[0]
+    # Where the widget really shows up on the page as you would see it.
+    shown = next(page.widgets()).rect * page.rotation_matrix
+    shown.normalize()
+    assert text_box["x"] * page.rect.width == pytest.approx(shown.x0, abs=0.5)
+    assert text_box["y"] * page.rect.height == pytest.approx(shown.y0, abs=0.5)
+    assert text_box["width"] * page.rect.width == pytest.approx(shown.width, abs=0.5)
+
+
+def test_form_fields_get_filled_in():
+    pdf = make_form_pdf()
+    ids = [f["id"] for f in pdf_tools.form_fields(pdf)]
+    answers = [
+        {"id": ids[0], "page": 0, "value": "Charlie Parsons"},
+        {"id": ids[1], "page": 0, "value": True},
+        {"id": ids[3], "page": 0, "value": True},  # the "Blue" radio button
+        {"id": ids[4], "page": 0, "value": "NY"},
+    ]
+    filled = pdf_tools.stamp(pdf, [], fields=answers)
+    assert read_fields(filled) == {"Full name": "Charlie Parsons", "Agree": "Yes", "Colour": "Blue", "State": "NY"}
+    # The typed name is drawn on the page too, not just stored.
+    assert "Charlie Parsons" in pymupdf.open(stream=filled)[0].get_text()
+
+    # Opening the filled PDF again shows the new answers.
+    again = pdf_tools.form_fields(filled)
+    assert [f["value"] for f in again] == ["Charlie Parsons", True, False, True, "NY"]
+
+
+def test_form_fields_through_the_web_server():
+    client = web_app.app.test_client()
+    pdf = client.post("/api/pdf", data={"file": (io.BytesIO(make_form_pdf()), "form.pdf")}).get_json()
+    assert len(pdf["fields"]) == 5
+    name_box = pdf["fields"][0]
+
+    # Fill a field and place free text in the same go.
+    fields = [{"id": name_box["id"], "page": 0, "value": "Charlie"}]
+    items = [{"type": "text", "page": 0, "x": 0.5, "y": 0.8, "text": "Extra note", "size": 12}]
+    response = client.post(f"/api/pdf/{pdf['id']}/sign", json={"items": items, "fields": fields})
+    assert response.status_code == 200
+    assert read_fields(response.data)["Full name"] == "Charlie"
+    assert "Extra note" in pymupdf.open(stream=response.data)[0].get_text()
+
+    # A field id that is not in the PDF gives a clear error.
+    bad = client.post(f"/api/pdf/{pdf['id']}/sign", json={"fields": [{"id": 99999, "page": 0, "value": "x"}]})
+    assert bad.status_code == 400

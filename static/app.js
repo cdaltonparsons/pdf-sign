@@ -18,6 +18,7 @@ const state = {
   threshold: 200,
   tool: null,         // "signature", "text" or null
   items: [],          // everything placed on the pages
+  fields: [],         // the PDF's own fill-in boxes, if it has any
 };
 
 // A small wrapper around fetch that turns server errors into readable alerts.
@@ -45,8 +46,12 @@ $("pdf-input").addEventListener("change", async (event) => {
     state.pdfId = result.id;
     state.pages = result.pages;
     state.items = [];
+    // Remember each form field's starting value, so we only send back the
+    // ones you changed.
+    state.fields = result.fields.map((field) => ({ ...field, original: field.value }));
     showPages();
     updateButtons();
+    showFormNote();
     setHint("Now add a signature or some text, then click on the page to place it.");
   } catch (error) {
     alert(error.message);
@@ -68,6 +73,85 @@ function showPages() {
     page.appendChild(img);
     container.appendChild(page);
   });
+  state.fields.forEach((field) => {
+    field.el = makeFieldElement(field);
+    document.querySelector(`.page[data-index="${field.page}"]`).appendChild(field.el);
+    positionField(field);
+  });
+}
+
+// ---------- 1b. The PDF's own form fields ----------
+
+// Tell you whether this PDF has boxes you can type straight into.
+function showFormNote() {
+  const note = $("form-note");
+  const count = state.fields.length;
+  note.hidden = count === 0;
+  note.textContent = `This PDF has ${count} form ${count === 1 ? "field" : "fields"}. ` +
+    "They are shaded blue on the page. Click one to fill it in.";
+}
+
+// Build a real input box on top of each form field, so you fill it in
+// exactly where it sits on the page.
+function makeFieldElement(field) {
+  let el;
+  if (field.kind === "text") {
+    el = document.createElement(field.multiline ? "textarea" : "input");
+    el.value = field.value;
+    if (field.maxLength) el.maxLength = field.maxLength;
+    el.addEventListener("input", () => setFieldValue(field, el.value));
+  } else if (field.kind === "checkbox" || field.kind === "radio") {
+    el = document.createElement("input");
+    el.type = field.kind;
+    // Radio buttons with the same name form a group where only one can be on.
+    el.name = `field-${field.name || field.id}`;
+    el.checked = field.value;
+    el.addEventListener("change", () => setFieldValue(field, el.checked));
+  } else {
+    el = document.createElement("select");
+    const options = field.options.includes(field.value) ? field.options : ["", ...field.options];
+    options.forEach((option) => el.add(new Option(option, option)));
+    el.value = field.value;
+    el.addEventListener("change", () => setFieldValue(field, el.value));
+  }
+  el.className = `field ${field.kind}`;
+  el.title = field.label || field.name;
+  el.disabled = field.readOnly;
+  return el;
+}
+
+// One field can appear in several places, for example your name on every
+// page. Keep all the copies the same as you type.
+function setFieldValue(field, value) {
+  field.value = value;
+  if (!field.name) return;
+  state.fields.forEach((other) => {
+    if (other === field || other.name !== field.name || other.kind !== field.kind) return;
+    if (field.kind === "radio") {
+      other.value = false;  // only one radio button in a group can be on
+    } else {
+      other.value = value;
+      if (field.kind === "checkbox") other.el.checked = value;
+      else other.el.value = value;
+    }
+  });
+}
+
+// Put the input box on screen over the field, sized to match.
+function positionField(field) {
+  const el = field.el;
+  el.style.left = `${field.x * 100}%`;
+  el.style.top = `${field.y * 100}%`;
+  el.style.width = `${field.width * 100}%`;
+  el.style.height = `${field.height * 100}%`;
+  // Font size in points. 0 means "fit to the box", so we pick a size that fits.
+  // Tick boxes use it for the size of the tick.
+  const size = state.pages[field.page];
+  const heightInPoints = field.height * size.height;
+  let points = field.fontSize || (field.multiline ? 10 : Math.min(12, heightInPoints * 0.7));
+  if (field.kind === "checkbox" || field.kind === "radio") points = heightInPoints * 0.8;
+  const pageWidthOnScreen = el.parentElement.getBoundingClientRect().width;
+  el.style.fontSize = `${(points * pageWidthOnScreen) / size.width}px`;
 }
 
 // ---------- 2. The signature ----------
@@ -335,18 +419,25 @@ function startDrag(item, event) {
 }
 
 // Keep text the right size when the window changes size.
-window.addEventListener("resize", () => state.items.forEach(positionItem));
+window.addEventListener("resize", () => {
+  state.items.forEach(positionItem);
+  state.fields.forEach(positionField);
+});
 
 // ---------- 4. Download ----------
 
 $("download").addEventListener("click", async () => {
   // Only send the plain data, not the on-screen elements.
   const items = state.items.map(({ el, ...data }) => data);
+  // Only send the form fields you actually changed.
+  const fields = state.fields
+    .filter((field) => field.value !== field.original)
+    .map(({ id, page, value }) => ({ id, page, value }));
   try {
     const response = await callServer(`/api/pdf/${state.pdfId}/sign`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ items, signatureId: state.signatureId, threshold: state.threshold }),
+      body: JSON.stringify({ items, fields, signatureId: state.signatureId, threshold: state.threshold }),
     });
     // Pull the file name out of the server's reply, then save the file.
     const header = response.headers.get("Content-Disposition") || "";

@@ -26,4 +26,4 @@ Set up with `python3 -m venv .venv`, then `source .venv/bin/activate`, then `pip
 
 ## Roadmap
 
-Version 1 places a signature and free text anywhere on a page. Version 1.1 adds typed signatures in script fonts. The next step is filling the PDF's own form fields (PyMuPDF `page.widgets()`).
+Version 1 places a signature and free text anywhere on a page. Version 1.1 adds typed signatures in script fonts. Version 1.2 fills the PDF's own form fields (text, tick boxes, radio buttons and drop-downs). `pdf_tools.form_fields` lists them for the browser, which draws an input over each one, and `_fill_fields` writes back only the changed ones, using each widget's xref as its id. Signature fields and push buttons are skipped for now.
